@@ -39,6 +39,6 @@ release:
 	shasum -a 512 build/* > build/sha512sums.txt
 
 docker:
-	docker build --rm --force-rm --no-cache -t systemli/prometheus-jitsi-meet-exporter .
+	docker build --rm --force-rm --no-cache -t kkh913/goemojify .
 
 .PHONY: all vet test coverage clean build run release docker
