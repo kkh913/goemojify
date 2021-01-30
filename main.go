@@ -3,11 +3,14 @@ package main
 import (
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
+	flag "github.com/spf13/pflag"
 	"goemojify/emojidb"
 	"os"
 	"regexp"
 	"strings"
 )
+
+var GitTag string
 
 type EmojiDataBase struct {
 	Emoji          string   `json:"emoji"`
@@ -31,6 +34,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	showList := flag.BoolP("list", "l", false, "show the list of supported emojies")
+	showVersion := flag.BoolP("version", "v", false, "version")
+	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(GitTag)
+		return
+	}
+
+	re := regexp.MustCompile(`\w+|([+-]\d)`)
+
 	bytejson, _ := emojidb.Asset("emoji.json")
 
 	var emoji_data []EmojiDataBase
@@ -41,10 +55,17 @@ func main() {
 		panic(err)
 	}
 
-	test_sentence := args[1]
-	// test_sentence := "kanghee :beer:"
+	if *showList {
+		for _, item := range emoji_data {
+			for _, v := range item.Aliases {
+				fmt.Printf(":%s: %s\n", v, item.Emoji)
+			}
+		}
+		return
+	}
 
-	re := regexp.MustCompile(`:(\w+|([+-]\d)):`)
+	emoji_sentence := args[1]
+	parts := strings.Split(emoji_sentence, ":")
 
 	Contains := func(s []string, substr string) bool {
 		for _, v := range s {
@@ -59,9 +80,7 @@ func main() {
 
 		for _, item := range emoji_data {
 
-			word := strings.ReplaceAll(source, ":", "")
-
-			if Contains(item.Aliases, word) {
+			if Contains(item.Aliases, source) {
 				return item.Emoji
 			}
 		}
@@ -69,8 +88,32 @@ func main() {
 		return source
 	}
 
-	fmt.Println(re.ReplaceAllStringFunc(test_sentence, ToEmoji))
+	var ret string
+	prev_state := false
 
-	// output may be...
-	// Hey, I just 🙋 you, and this is 😱 , but here's my 📲 , so 📞 me, maybe?
+	for _, part := range parts {
+		if len(strings.Fields(part)) == 1 && re.MatchString(part) {
+			toEmoji := ToEmoji(part)
+			if toEmoji != part {
+				ret = ret + toEmoji
+				prev_state = true
+			} else {
+				if prev_state {
+					ret = ret + part
+				} else {
+					ret = ret + ":" + part
+				}
+				prev_state = false
+			}
+		} else {
+			if prev_state {
+				ret = ret + part
+			} else {
+				ret = ret + ":" + part
+			}
+			prev_state = false
+		}
+	}
+
+	fmt.Println(ret[1:])
 }
