@@ -69,7 +69,7 @@ func main() {
 		flagsName.listShort,
 		false, "show the list of supported emojies")
 
-	bytejson, _ := emojidb.Asset("emoji.json")
+	bytejson, _ := emojidb.Asset("emojidb/emoji.json")
 
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
