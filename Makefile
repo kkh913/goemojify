@@ -15,7 +15,7 @@ BINARY_NAME  = goemojify
 all: clean vet test build
 
 build:
-	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) -v -ldflags "-X main.GitTag=`git describe --tags --abbrev=0`"
+	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) -v -ldflags "-X main.gitTag=`git describe --tags --abbrev=0`"
 
 vet:
 	${GOVET} ./...

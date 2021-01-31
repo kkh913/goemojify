@@ -3,14 +3,12 @@ package main
 import (
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
-	flag "github.com/spf13/pflag"
+	"github.com/spf13/cobra"
 	"goemojify/emojidb"
 	"os"
-	"regexp"
-	"strings"
 )
 
-var GitTag string
+var gitTag string
 
 type EmojiDataBase struct {
 	Emoji          string   `json:"emoji"`
@@ -22,98 +20,65 @@ type EmojiDataBase struct {
 	IOSVersion     string   `json:"ios_version"`
 }
 
+var emojiData []EmojiDataBase
+var emojiAliases string
+
+var rootCmd = &cobra.Command{
+	Use:   "goemojify",
+	Short: "Convert the aliases to emojy raw characters",
+	Long: `Golang port of the original emojify(https://github.com/mrowa44/emojify).
+all the glories should belong to mrowa44(https://github.com/mrowa44).`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 1 {
+			emojiAliases = args[0]
+		}
+		return runCommand()
+	},
+}
+
+var flags struct {
+	filepath string
+	version  bool
+	list     bool
+}
+
+var flagsName = struct {
+	file, fileShort       string
+	version, versionShort string
+	list, listShort       string
+}{
+	"file", "f",
+	"version", "v",
+	"list", "l",
+}
+
 func main() {
-
-	args := os.Args
-
-	if len(args) == 1 {
-		fmt.Fprintf(os.Stderr, "You must input one argument\n")
-		os.Exit(1)
-	} else if len(args) > 2 {
-		fmt.Fprintf(os.Stderr, "Error, only one command line argument allowed\n")
-		os.Exit(1)
-	}
-
-	showList := flag.BoolP("list", "l", false, "show the list of supported emojies")
-	showVersion := flag.BoolP("version", "v", false, "version")
-	flag.Parse()
-
-	if *showVersion {
-		fmt.Println(GitTag)
-		return
-	}
-
-	re := regexp.MustCompile(`\w+|([+-]\d)`)
+	rootCmd.Flags().StringVarP(
+		&flags.filepath,
+		flagsName.file,
+		flagsName.fileShort,
+		"", "path to the file")
+	rootCmd.PersistentFlags().BoolVarP(
+		&flags.version,
+		flagsName.version,
+		flagsName.versionShort,
+		false, "version number")
+	rootCmd.PersistentFlags().BoolVarP(
+		&flags.list,
+		flagsName.list,
+		flagsName.listShort,
+		false, "show the list of supported emojies")
 
 	bytejson, _ := emojidb.Asset("emoji.json")
 
-	var emoji_data []EmojiDataBase
-
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
-	if err := json.Unmarshal(bytejson, &emoji_data); err != nil {
+	if err := json.Unmarshal(bytejson, &emojiData); err != nil {
 		panic(err)
 	}
 
-	if *showList {
-		for _, item := range emoji_data {
-			for _, v := range item.Aliases {
-				fmt.Printf(":%s: %s\n", v, item.Emoji)
-			}
-		}
-		return
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
-
-	emoji_sentence := args[1]
-	parts := strings.Split(emoji_sentence, ":")
-
-	Contains := func(s []string, substr string) bool {
-		for _, v := range s {
-			if v == substr {
-				return true
-			}
-		}
-		return false
-	}
-
-	ToEmoji := func(source string) string {
-
-		for _, item := range emoji_data {
-
-			if Contains(item.Aliases, source) {
-				return item.Emoji
-			}
-		}
-
-		return source
-	}
-
-	var ret string
-	prev_state := false
-
-	for _, part := range parts {
-		if len(strings.Fields(part)) == 1 && re.MatchString(part) {
-			toEmoji := ToEmoji(part)
-			if toEmoji != part {
-				ret = ret + toEmoji
-				prev_state = true
-			} else {
-				if prev_state {
-					ret = ret + part
-				} else {
-					ret = ret + ":" + part
-				}
-				prev_state = false
-			}
-		} else {
-			if prev_state {
-				ret = ret + part
-			} else {
-				ret = ret + ":" + part
-			}
-			prev_state = false
-		}
-	}
-
-	fmt.Println(ret[1:])
 }
